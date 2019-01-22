@@ -224,17 +224,51 @@ static bool onewire_search(struct mgos_onewire *ow) {
 }
 
 bool mgos_onewire_read_bit(struct mgos_onewire *ow) {
+  bool res;
+
   if (ow == NULL) return 0;
   mgos_ints_disable();
-  mgos_gpio_set_mode(ow->pin, MGOS_GPIO_MODE_OUTPUT);
-  mgos_gpio_write(ow->pin, LOW);
-  mgos_usleep(3);
-  mgos_gpio_set_mode(ow->pin, MGOS_GPIO_MODE_INPUT);
-  mgos_gpio_set_pull(ow->pin, MGOS_GPIO_PULL_UP);
-  mgos_usleep(10);
-  bool res = mgos_gpio_read(ow->pin);
+
+  // Issue: if any of the code executed in this critical section is not cache-resident
+  // and the bit being received is a '0', the execution delays involved in caching the
+  // code may cause the '0' bit to be interpreted as a '1'.
+  //
+  // Fix: We ensure that the critical code is cached by executing it twice: once to make sure it is cached,
+  // and a second time to actually perform the time-critical read operation.
+  //
+  // The first time through:
+  //   - the Onewire data pin is driven to '1' instead of '0' to avoid starting the Onewire READ operation
+  //   - the loop timing delays are set to minimal values since they are not needed first time through
+  // The second time through, the code is known to be cache-resident.  Therefore:
+  //   - The OneWire data pin gets driven to '0' which starts the time-critical READ operation
+  //   - timing delays are executed with their proper values
+
+  const int delay_param_F = 52;     // Min 50, Typ. 55, Max <none>
+
+  // Init params to have little or no effect the first time through:
+  int delay_param_A = 1;
+  int delay_param_E = 1;
+  int data_state = 1;
+
+  int iterations = 2;
+
+  do {
+    mgos_gpio_write(ow->pin, data_state);                 // To avoid potential glitches, set the new output state...
+    mgos_gpio_set_mode(ow->pin, MGOS_GPIO_MODE_OUTPUT);   // ...before changing the mode
+    mgos_usleep(delay_param_A);
+    mgos_gpio_set_pull(ow->pin, MGOS_GPIO_PULL_UP);       // To avoid potential glitches, enable pullups...
+    mgos_gpio_set_mode(ow->pin, MGOS_GPIO_MODE_INPUT);    // ...before changing the mode
+    mgos_usleep(delay_param_E);
+    res = mgos_gpio_read(ow->pin);
+
+    // Prepare for the actual read operation:
+    data_state = 0;
+    delay_param_A = 6;      // Min 5, Typ. 6, Max 15    Test system started producing errors at < 5 
+    delay_param_E = 9;      // Min 5, Typ. 9, Max 12    Test system started producing errors at > 17
+  } while (--iterations);
+
   mgos_ints_enable();
-  mgos_usleep(52);
+  mgos_usleep(delay_param_F);
   return res;
 }
 
