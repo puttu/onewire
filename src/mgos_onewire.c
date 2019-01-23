@@ -227,7 +227,7 @@ bool mgos_onewire_read_bit(struct mgos_onewire *ow) {
   bool res;
 
   if (ow == NULL) return 0;
-  mgos_ints_disable();
+  // mgos_ints_disable();
 
   // Issue: if any of the code executed in this critical section is not cache-resident
   // and the bit being received is a '0', the execution delays involved in caching the
@@ -267,16 +267,18 @@ bool mgos_onewire_read_bit(struct mgos_onewire *ow) {
     delay_param_E = 9;      // Min 5, Typ. 9, Max 12    Test system started producing errors at > 17
   } while (--iterations);
 
-  mgos_ints_enable();
+  // mgos_ints_enable();
   mgos_usleep(delay_param_F);
   return res;
 }
 
 uint8_t mgos_onewire_read(struct mgos_onewire *ow) {
   uint8_t res = 0x00;
+  mgos_ints_disable();
   for (uint8_t mask = 0x01; mask; mask <<= 1) {
     if (mgos_onewire_read_bit(ow)) res |= mask;
   }
+  mgos_ints_enable();
   return res;
 }
 
