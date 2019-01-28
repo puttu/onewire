@@ -274,18 +274,20 @@ bool mgos_onewire_read_bit(struct mgos_onewire *ow) {
 
 uint8_t mgos_onewire_read(struct mgos_onewire *ow) {
   uint8_t res = 0x00;
-  mgos_ints_disable();
+  // mgos_ints_disable();
   for (uint8_t mask = 0x01; mask; mask <<= 1) {
     if (mgos_onewire_read_bit(ow)) res |= mask;
   }
-  mgos_ints_enable();
+  // mgos_ints_enable();
   return res;
 }
 
 void mgos_onewire_read_bytes(struct mgos_onewire *ow, uint8_t *buf, int len) {
+  mgos_ints_disable();
   for (int i = 0; i < len; i++) {
     buf[i] = mgos_onewire_read(ow);
   }
+  mgos_ints_enable();
 }
 
 void mgos_onewire_write_bit(struct mgos_onewire *ow, int bit) {
