@@ -307,19 +307,21 @@ void mgos_onewire_read_bytes(struct mgos_onewire *ow, uint8_t *buf, int len) {
 
 void mgos_onewire_write_bit(struct mgos_onewire *ow, int bit) {
   if (ow == NULL) return;
-  mgos_ints_disable();
+  // mgos_ints_disable();
   mgos_gpio_set_mode(ow->pin, MGOS_GPIO_MODE_OUTPUT);
   mgos_gpio_write(ow->pin, LOW);
   mgos_usleep(bit ? 10 : 65);
   mgos_gpio_write(ow->pin, HIGH);
-  mgos_ints_enable();
+  // mgos_ints_enable();
   mgos_usleep(bit ? 55 : 5);
 }
 
 void mgos_onewire_write(struct mgos_onewire *ow, const uint8_t data) {
+  mgos_ints_disable();
   for (uint8_t mask = 0x01; mask; mask <<= 1) {
     mgos_onewire_write_bit(ow, (mask & data) ? 1 : 0);
   }
+  mgos_ints_enable();
 }
 
 void mgos_onewire_write_bytes(struct mgos_onewire *ow, const uint8_t *buf,
