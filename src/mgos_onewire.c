@@ -246,9 +246,6 @@ uint8_t mgos_onewire_read(struct mgos_onewire *ow) {
 
 void mgos_onewire_read_bytes(struct mgos_onewire *ow, uint8_t *buf, int len) {
   mgos_ints_disable();
-  mgos_gpio_set_mode(26, MGOS_GPIO_MODE_INPUT);
-  mgos_gpio_set_pull(26, MGOS_GPIO_PULL_UP);
-  mgos_usleep(1);
   for (int i = 0; i < len; i++) {
     buf[i] = mgos_onewire_read(ow);
   }
